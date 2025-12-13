@@ -1,29 +1,35 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <termios.h>
+#include <stdlib.h>
+
+struct termios orgAttributes;
+
+void disableRawMode(){
+  tcsetattr(STDIN_FILENO,TCSAFLUSH,&orgAttributes);
+}
 void enableRawMode(){
+
+  tcgetattr(STDIN_FILENO,&orgAttributes);
+  atexit(disableRawMode);
   // creates a structure to read the current attributes of the terminal
-  struct termios terminalAttributes;
-  // this gets the attributes of the terminal and puts them in the struct
-  tcgetattr(STDIN_FILENO,&terminalAttributes);
-  // turn off ECHO
+  struct termios terminalAttributes = orgAttributes;
+   // turn off ECHO
   terminalAttributes.c_lflag &= ~(ECHO);
   // we pass the new attributes back to the terminal 
-  tcsetattr(STDIN_FILENO,TCSAFLUSH,&terminalAttric butes);
+  tcsetattr(STDIN_FILENO,TCSAFLUSH,&terminalAttributes);
 
 }
 int main(){
   enableRawMode();
   char c;
-  char checkexit[2];
-  int quit = 0;
   printf("Welcome to egg, please press :q to exit \n");
   while((read(STDIN_FILENO, &c,1) == 1) && quit != 1){
   if(c == ':'){
-           fgets(checkexit  ,sizeof(checkexit),stdin);
-      if(checkexit[0] == 'q'){    
+      read(STDIN_FILENO,&c,1);
+      if(c == 'q'){    
         printf("exiting program \n");
-        quit = 1;
+        exit(0);
       }
     }
   }
