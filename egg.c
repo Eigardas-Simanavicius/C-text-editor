@@ -31,6 +31,9 @@ int main(){
         printf("exiting program \n");
         exit(0);
       }
+      if(c == 'h'){
+        printf("Helping helping helping \n");
+      }
     }
   }
   return 0;
