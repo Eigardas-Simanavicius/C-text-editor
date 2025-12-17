@@ -17,6 +17,7 @@
    struct termios terminalAttributes = orgAttributes;
     // turn off ECHO
    terminalAttributes.c_iflag &= ~(IXON);
+   terminalAttributes.c_oflag &= ~(OPOST);
    terminalAttributes.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN);
    // we pass the new attributes back to the terminal 
    tcsetattr(STDIN_FILENO,TCSAFLUSH,&terminalAttributes);
@@ -27,9 +28,9 @@
    printf("Welcome to egg, please press :q to exit \n");
    while((read(STDIN_FILENO, &c,1) == 1)){
    if(iscntrl(c)){
-       printf("%d \n",c);
+       printf("%d \r\n",c);
      }else{
-       printf("%d ('%c')", c,c);
+       printf("%d ('%c')\r\n", c,c);
       }
    if(c == ':'){
        read(STDIN_FILENO,&c,1);
