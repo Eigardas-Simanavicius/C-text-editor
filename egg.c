@@ -36,23 +36,48 @@ void errorPrint(const char *s){
    // we pass the new attributes back to the terminal 
    tcsetattr(STDIN_FILENO,TCSAFLUSH,&terminalAttributes);
  }
+
+ char readKey(){
+  int nread;
+  char c;
+  // EAGAIN: "Resoursce temporerily unavailabe."
+  if(read(STDIN_FILENO, &c,1) == -1 && errno != EAGAIN){
+     errorPrint("reading error");
+   }
+    return c;
+ }
+
+//*** input ***/*/
+ void processKey(){
+   char c = readKey();
+   printf("%c",&c);
+   switch(c){
+     case CTRL_KEY('q'):
+      exit(0);
+      break;
+   }
+
+   
+ }
+
+ //** output **// 
+ //
+
+ void clearScreen(){
+   // we are writing 4,ytes to the file, x1b is the escape character, and [2J is te other 3 bytes
+   //
+   write(STDOUT_FILENO,"\x1b[2J",4);
+ }
 // init // 
  int main(){
    enableRawMode();
    printf("Welcome to egg, please press :q to exit \n");
 
    while(1){
-   char c = '\0';
-   
-   // we dont need to do the while loop, due to the vmin and vtime , we it will read automatically/?
-   read(STDIN_FILENO, &c,1);
-
-   if(iscntrl(c)){
-       printf("%d \r\n",c);
-   }else{
-       printf("%d ('%c')\r\n", c,c);}
-
-  if(c == CTRL_KEY('q')) break;
+     clearScreen();
+    processKey();
    }
+
    return 0;
-}
+ }
+
