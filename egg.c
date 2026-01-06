@@ -50,7 +50,6 @@ void errorPrint(const char *s){
 //*** input ***/*/
  void processKey(){
    char c = readKey();
-   printf("%c",&c);
    switch(c){
      case CTRL_KEY('q'):
       exit(0);
@@ -65,8 +64,9 @@ void errorPrint(const char *s){
 
  void clearScreen(){
    // we are writing 4,ytes to the file, x1b is the escape character, and [2J is te other 3 bytes
-   //
    write(STDOUT_FILENO,"\x1b[2J",4);
+   write(STDOUT_FILENO,"\x1b[H",3);
+
  }
 // init // 
  int main(){
