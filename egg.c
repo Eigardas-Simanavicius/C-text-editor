@@ -1,9 +1,10 @@
+#include "appendBuffer.h"
 #include "header.h"
 #include <asm-generic/ioctls.h>
-#include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <unistd.h>
@@ -11,6 +12,7 @@
 // defines //
 #define CTRL_KEY(k) ((k) & 0x1f)
 struct editorConfig {
+  int cx, cy;
   int rows;
   int cols;
   struct termios orgAttributes;
@@ -49,11 +51,12 @@ void enableRawMode() {
 
 char readKey() {
   int nread;
-  char c;
+  char c = '\0';
   // EAGAIN: "Resoursce temporerily unavailabe."
   if (read(STDIN_FILENO, &c, 1) == -1 && errno != EAGAIN) {
     errorPrint("reading error");
   }
+  printf("%c", c);
   return c;
 }
 
@@ -74,40 +77,74 @@ void processKey() {
   char c = readKey();
   switch (c) {
   case CTRL_KEY('q'):
-    clearScreen();
+    write(STDOUT_FILENO, "\x1b[2J", 4);
+    write(STDOUT_FILENO, "\x1b[H", 3);
     exit(0);
+    break;
+  case 'w':
+    editor.cy--;
+    break;
+  case 's':
+    editor.cy++;
+    break;
+  case 'a':
+    editor.cx--;
+    break;
+  case 'd':
+    editor.cx++;
     break;
   }
 }
 
 //** output **//
 //
-void editorDrawRows() {
+void editorDrawRows(struct abuf *ab) {
   int y;
   for (y = 0; y < editor.rows; y++) {
-    write(STDOUT_FILENO, "~", 1);
+    abAppend(ab, "~", 1);
+
+    if (y == editor.rows / 3) {
+      char *welcome = "Hello gamers";
+      int padding = editor.cols / 2;
+      while (padding--) {
+        abAppend(ab, " ", 1);
+      }
+      abAppend(ab, welcome, strnlen(welcome, 13));
+    }
+    abAppend(ab, "\x1b[K", 3);
     if (y < editor.rows - 1) {
-      write(STDOUT_FILENO, "\r\n", 2);
+      abAppend(ab, "\r\n", 2);
     }
   }
 }
 
 void clearScreen() {
-  // we are writing 4,ytes to the file, x1b is the escape character, and [2J is
-  // te other 3 bytes
-  write(STDOUT_FILENO, "\x1b[2J", 4);
-  write(STDOUT_FILENO, "\x1b[H", 3);
-  editorDrawRows();
-  write(STDOUT_FILENO, "\x1b[H", 3);
+  struct abuf ab = ABUF_INIT;
+  // we are writing 4,ytes to the file, x1b is the escape character, and [2J
+  // is te other 3 bytes
+  abAppend(&ab, "\x1b[?25l", 6);
+  abAppend(&ab, "\x1b[H", 3);
+  editorDrawRows(&ab);
+
+  char buf[32];
+  snprintf(buf, sizeof(buf), "\x1b[%d;%dH", editor.cy + 1, editor.cx + 2);
+  abAppend(&ab, buf, strlen(buf));
+
+  abAppend(&ab, "\x1b[?25h", 6);
+  write(STDOUT_FILENO, ab.curr, ab.len);
+  abFree(&ab);
 }
 // init //
 void initEditor() {
+  editor.cx = 0;
+  editor.cy = 0;
   if (getWindowSize(&editor.rows, &editor.cols) == -1)
     errorPrint("windowsize Fail");
 }
+
 int main() {
   enableRawMode();
-  printf("Welcome to egg, please press :q to exit \n");
+  printf(" Welcome to egg, please press :q to exit \n");
   initEditor();
 
   while (1) {
