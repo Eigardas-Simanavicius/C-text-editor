@@ -11,6 +11,14 @@
 
 // defines //
 #define CTRL_KEY(k) ((k) & 0x1f)
+
+enum moveKeys {
+  ARROW_LEFT = 'a',
+  ARROW_RIGHT = 'd',
+  ARROW_UP = 'w',
+  ARROW_DOWN = 's'
+};
+
 struct editorConfig {
   int cx, cy;
   int rows;
@@ -56,8 +64,31 @@ char readKey() {
   if (read(STDIN_FILENO, &c, 1) == -1 && errno != EAGAIN) {
     errorPrint("reading error");
   }
-  printf("%c", c);
-  return c;
+
+  if (c == '\x1b') {
+    char seq[3];
+
+    if (read(STDOUT_FILENO, &seq[0], 1) != 1)
+      return '\x1b';
+    if (read(STDOUT_FILENO, &seq[1], 1) != 1)
+      return '\x1b';
+
+    if (seq[0] == '[') {
+      switch (seq[1]) {
+      case 'A':
+        return ARROW_UP;
+      case 'B':
+        return ARROW_DOWN;
+      case 'C':
+        return ARROW_RIGHT;
+      case 'D':
+        return ARROW_LEFT;
+      }
+    }
+    return '\x1b';
+  } else {
+    return c;
+  }
 }
 
 int getWindowSize(int *rows, int *cols) {
