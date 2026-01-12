@@ -13,10 +13,13 @@
 #define CTRL_KEY(k) ((k) & 0x1f)
 
 enum moveKeys {
-  ARROW_LEFT = 'a',
-  ARROW_RIGHT = 'd',
-  ARROW_UP = 'w',
-  ARROW_DOWN = 's'
+  ARROW_LEFT = 1000,
+  ARROW_RIGHT = 1001,
+  ARROW_UP = 1002,
+  ARROW_DOWN = 1003,
+  PAGE_UP = 1004,
+  PAGE_DOWN = 1005
+
 };
 
 struct editorConfig {
@@ -57,14 +60,14 @@ void enableRawMode() {
   tcsetattr(STDIN_FILENO, TCSAFLUSH, &terminalAttributes);
 }
 
-char readKey() {
+int readKey() {
   int nread;
   char c = '\0';
   // EAGAIN: "Resoursce temporerily unavailabe."
   if (read(STDIN_FILENO, &c, 1) == -1 && errno != EAGAIN) {
     errorPrint("reading error");
   }
-
+  printf("%c", c);
   if (c == '\x1b') {
     char seq[3];
 
@@ -74,6 +77,20 @@ char readKey() {
       return '\x1b';
 
     if (seq[0] == '[') {
+      if (seq[1] >= '0' && seq[1] <= '9') {
+        if (read(STDOUT_FILENO, &seq[2], 1) != 1)
+          return '\x1b';
+        if (seq[2] == '~') {
+          switch (seq[1]) {
+          case '5':
+            return PAGE_UP;
+            break;
+          case '6':
+            return PAGE_DOWN;
+            break;
+          }
+        }
+      }
       switch (seq[1]) {
       case 'A':
         return ARROW_UP;
@@ -105,24 +122,38 @@ int getWindowSize(int *rows, int *cols) {
 
 //*** input ***/*/
 void processKey() {
-  char c = readKey();
+  int c = readKey();
   switch (c) {
   case CTRL_KEY('q'):
     write(STDOUT_FILENO, "\x1b[2J", 4);
     write(STDOUT_FILENO, "\x1b[H", 3);
     exit(0);
     break;
-  case 'w':
-    editor.cy--;
+  case ARROW_UP:
+    if (editor.cy != 0) {
+      editor.cy--;
+    }
     break;
-  case 's':
-    editor.cy++;
+  case ARROW_DOWN:
+    if (editor.cy != editor.rows - 1) {
+      editor.cy++;
+    }
     break;
-  case 'a':
-    editor.cx--;
+  case ARROW_LEFT:
+    if (editor.cx != 0) {
+      editor.cx--;
+    }
     break;
-  case 'd':
-    editor.cx++;
+  case ARROW_RIGHT:
+    if (editor.cx != editor.rows - 1) {
+      editor.cx++;
+    }
+    break;
+  case PAGE_UP:
+    editor.cy = 0;
+    break;
+  case PAGE_DOWN:
+    editor.cy = editor.rows - 1;
     break;
   }
 }
