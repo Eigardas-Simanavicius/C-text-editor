@@ -1,3 +1,7 @@
+#define _DEFAULT_SOURCE
+#define _BSD_SOURCE
+#define _GNU_SOURCE
+
 #include "appendBuffer.h"
 #include "header.h"
 #include <asm-generic/ioctls.h>
@@ -6,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/types.h>
 #include <termios.h>
 #include <unistd.h>
 
@@ -22,10 +27,17 @@ enum moveKeys {
 
 };
 
+typedef struct erow {
+  int size;
+  char *chars;
+} erow;
+
 struct editorConfig {
   int cx, cy;
-  int rows;
-  int cols;
+  int rows; // screenrows
+  int cols; // windowscolumsn
+  int usedrows;
+  erow *erow;
   struct termios orgAttributes;
 };
 
@@ -61,13 +73,13 @@ void enableRawMode() {
 }
 
 int readKey() {
-  int nread;
-  char c = '\0';
+  char c;
   // EAGAIN: "Resoursce temporerily unavailabe."
+
   if (read(STDIN_FILENO, &c, 1) == -1 && errno != EAGAIN) {
     errorPrint("reading error");
   }
-  printf("%c", c);
+
   if (c == '\x1b') {
     char seq[3];
 
@@ -122,6 +134,7 @@ int getWindowSize(int *rows, int *cols) {
 
 //*** input ***/*/
 void processKey() {
+  // char *lines = editor.erow->chars;
   int c = readKey();
   switch (c) {
   case CTRL_KEY('q'):
@@ -129,6 +142,7 @@ void processKey() {
     write(STDOUT_FILENO, "\x1b[H", 3);
     exit(0);
     break;
+
   case ARROW_UP:
     if (editor.cy != 0) {
       editor.cy--;
@@ -145,7 +159,7 @@ void processKey() {
     }
     break;
   case ARROW_RIGHT:
-    if (editor.cx != editor.rows - 1) {
+    if (editor.cx != editor.cols - 1) {
       editor.cx++;
     }
     break;
@@ -164,15 +178,20 @@ void editorDrawRows(struct abuf *ab) {
   int y;
   for (y = 0; y < editor.rows; y++) {
     abAppend(ab, "~", 1);
-
-    if (y == editor.rows / 3) {
-      char *welcome = "Hello gamers";
-      int padding = editor.cols / 2;
-      while (padding--) {
-        abAppend(ab, " ", 1);
-      }
-      abAppend(ab, welcome, strnlen(welcome, 13));
+    if (y <= editor.usedrows) {
+      int len = editor.erow->size;
+      if (len > editor.cols)
+        len = editor.cols;
+      abAppend(ab, editor.erow->chars, len);
+      // if (len > editor.cols) {
+      // len = editor.cols;
+      // }
+      // ssize_t lenght = strlen(editor.erow[0].chars);
+      // memcpy(test, editor.erow[0].chars, lenght);
+      // printf("%s", editor.erow[0].chars)
+      // printf("%d", editor.erow->size);
     }
+
     abAppend(ab, "\x1b[K", 3);
     if (y < editor.rows - 1) {
       abAppend(ab, "\r\n", 2);
@@ -196,19 +215,56 @@ void clearScreen() {
   write(STDOUT_FILENO, ab.curr, ab.len);
   abFree(&ab);
 }
+void editorAppendRow(char *s, size_t len) {
+  editor.erow =
+      realloc(editor.erow, sizeof(editor.erow) * (editor.usedrows + 1));
+
+  int curr = editor.usedrows;
+  editor.erow[curr].size = len;
+  editor.erow[curr].chars = malloc(len + 1);
+  memcpy(editor.erow[curr].chars, s, len);
+  editor.erow[curr].chars[len] = '\0';
+  editor.usedrows++;
+}
+// file io//
+void editorOpen(char *filename) {
+  FILE *fp = fopen(filename, "r");
+  if (!fp)
+    errorPrint("file not found");
+
+  char *line = NULL;
+
+  size_t linecap = 0;
+  ssize_t linelen;
+  linelen = getline(&line, &linecap, fp);
+
+  if (linelen != -1) {
+    while (linelen > 0 &&
+           (line[linelen - 1] == 'n' || line[linelen - 1] == '\r')) {
+      linelen--;
+    }
+    editorAppendRow(line, linelen);
+  }
+  free(line);
+  fclose(fp);
+}
+
 // init //
 void initEditor() {
   editor.cx = 0;
   editor.cy = 0;
+  editor.usedrows = 0;
+  editor.erow = NULL;
   if (getWindowSize(&editor.rows, &editor.cols) == -1)
     errorPrint("windowsize Fail");
 }
 
-int main() {
+int main(int argc, char *argv[]) {
   enableRawMode();
-  printf(" Welcome to egg, please press :q to exit \n");
   initEditor();
-
+  if (argc >= 2) {
+    editorOpen(argv[1]);
+  }
   while (1) {
     clearScreen();
     processKey();
