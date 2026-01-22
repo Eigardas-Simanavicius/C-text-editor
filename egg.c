@@ -177,19 +177,9 @@ void processKey() {
 void editorDrawRows(struct abuf *ab) {
   int y;
   for (y = 0; y < editor.rows; y++) {
-    abAppend(ab, "~", 1);
-    if (y <= editor.usedrows) {
-      int len = editor.erow->size;
-      if (len > editor.cols)
-        len = editor.cols;
-      abAppend(ab, editor.erow->chars, len);
-      // if (len > editor.cols) {
-      // len = editor.cols;
-      // }
-      // ssize_t lenght = strlen(editor.erow[0].chars);
-      // memcpy(test, editor.erow[0].chars, lenght);
-      // printf("%s", editor.erow[0].chars)
-      // printf("%d", editor.erow->size);
+    abAppend(ab, "~ ", 1);
+    if (y < editor.usedrows) {
+      abAppend(ab, editor.erow[y].chars, strlen(editor.erow[y].chars));
     }
 
     abAppend(ab, "\x1b[K", 3);
@@ -232,20 +222,22 @@ void editorOpen(char *filename) {
   if (!fp)
     errorPrint("file not found");
 
-  char *line = NULL;
+  char line[100];
 
-  size_t linecap = 0;
+  int linecap = 0;
   ssize_t linelen;
-  linelen = getline(&line, &linecap, fp);
+  while (fgets(line, 100, fp)) {
+    linelen = strlen(line);
+    printf("%s", line);
 
-  if (linelen != -1) {
-    while (linelen > 0 &&
-           (line[linelen - 1] == 'n' || line[linelen - 1] == '\r')) {
-      linelen--;
+    if (linelen != -1) {
+      while (linelen > 0 &&
+             (line[linelen - 1] == '\n' || line[linelen - 1] == '\r')) {
+        linelen--;
+      }
+      editorAppendRow(line, linelen);
     }
-    editorAppendRow(line, linelen);
   }
-  free(line);
   fclose(fp);
 }
 
@@ -262,9 +254,12 @@ void initEditor() {
 int main(int argc, char *argv[]) {
   enableRawMode();
   initEditor();
+
   if (argc >= 2) {
+
     editorOpen(argv[1]);
   }
+
   while (1) {
     clearScreen();
     processKey();
