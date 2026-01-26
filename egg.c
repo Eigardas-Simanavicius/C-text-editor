@@ -1,3 +1,4 @@
+#include <stddef.h>
 #define _DEFAULT_SOURCE
 #define _BSD_SOURCE
 #define _GNU_SOURCE
@@ -176,13 +177,17 @@ void processKey() {
 //
 void editorDrawRows(struct abuf *ab) {
   int y;
+  int len;
+  char *stringBuf = malloc(editor.cols);
   for (y = 0; y < editor.rows; y++) {
-    abAppend(ab, "~ ", 1);
+    len = 0;
+    abAppend(ab, "~ ", 3);
     if (y < editor.usedrows) {
-      abAppend(ab, editor.erow[y].chars, strlen(editor.erow[y].chars));
-    }
+      int len = strlen(editor.erow[y].chars);
 
-    abAppend(ab, "\x1b[K", 3);
+      abAppend(ab, editor.erow[y].chars, len);
+    }
+    abAppend(ab, "\x1b[K", 4);
     if (y < editor.rows - 1) {
       abAppend(ab, "\r\n", 2);
     }
@@ -206,8 +211,7 @@ void clearScreen() {
   abFree(&ab);
 }
 void editorAppendRow(char *s, size_t len) {
-  editor.erow =
-      realloc(editor.erow, sizeof(editor.erow) * (editor.usedrows + 1));
+  editor.erow = realloc(editor.erow, sizeof(erow) * (editor.usedrows + 1));
 
   int curr = editor.usedrows;
   editor.erow[curr].size = len;
@@ -222,22 +226,20 @@ void editorOpen(char *filename) {
   if (!fp)
     errorPrint("file not found");
 
-  char line[100];
+  char *line;
 
-  int linecap = 0;
+  size_t linecap = 0;
   ssize_t linelen;
-  while (fgets(line, 100, fp)) {
-    linelen = strlen(line);
-    printf("%s", line);
 
-    if (linelen != -1) {
-      while (linelen > 0 &&
-             (line[linelen - 1] == '\n' || line[linelen - 1] == '\r')) {
-        linelen--;
-      }
-      editorAppendRow(line, linelen);
+  while ((linelen = getline(&line, &linecap, fp)) != -1) {
+    while (linelen > 0 &&
+           (line[linelen - 1] == '\n' || line[linelen - 1] == '\r')) {
+      linelen--;
     }
+    editorAppendRow(line, linelen);
   }
+
+  // free(line);
   fclose(fp);
 }
 
