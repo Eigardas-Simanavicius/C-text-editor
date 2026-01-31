@@ -36,7 +36,8 @@ typedef struct erow {
 struct editorConfig {
   int cx, cy;
   int rows; // screenrows
-  int cols; // windowscolumsn
+  int cols; // windowscolumsn//
+  int currRow;
   int usedrows;
   erow *erow;
   struct termios orgAttributes;
@@ -244,13 +245,20 @@ void editorOpen(char *filename) {
 }
 
 // init //
+//
+void WindowSizeget() {
+  if (getWindowSize(&editor.rows, &editor.cols) == -1) {
+    errorPrint("windowssizefail");
+  }
+}
+
 void initEditor() {
   editor.cx = 0;
   editor.cy = 0;
   editor.usedrows = 0;
+  editor.currRow = 0;
   editor.erow = NULL;
-  if (getWindowSize(&editor.rows, &editor.cols) == -1)
-    errorPrint("windowsize Fail");
+  WindowSizeget();
 }
 
 int main(int argc, char *argv[]) {
@@ -263,6 +271,7 @@ int main(int argc, char *argv[]) {
   }
 
   while (1) {
+    WindowSizeget();
     clearScreen();
     processKey();
   }
