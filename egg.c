@@ -39,6 +39,7 @@ struct editorConfig {
   int cols; // windowscolumsn//
   int currRow;
   int usedrows;
+  int offset;
   erow *erow;
   struct termios orgAttributes;
 };
@@ -147,18 +148,27 @@ void processKey() {
 
   case ARROW_UP:
     if (editor.cy != 0) {
-      editor.cy--;
+      if (editor.cy == (editor.rows / 6)) {
+        editor.offset--;
+      } else {
+        editor.cy--;
+      }
+      editor.currRow--;
     }
     break;
   case ARROW_DOWN:
     if (editor.cy != editor.rows - 1) {
-      editor.cy++;
+      if (editor.cy == ((editor.rows / 6) * 5)) {
+        editor.offset++;
+      } else {
+        editor.cy++;
+      }
+      editor.currRow++;
     }
     break;
   case ARROW_LEFT:
-    if (editor.cx != 0) {
+    if (editor.cx != 0)
       editor.cx--;
-    }
     break;
   case ARROW_RIGHT:
     if (editor.cx != editor.cols - 1) {
@@ -166,10 +176,12 @@ void processKey() {
     }
     break;
   case PAGE_UP:
-    editor.cy = 0;
+    if (editor.currRow > editor.rows) {
+      editor.offset = editor.offset - editor.rows;
+    }
     break;
   case PAGE_DOWN:
-    editor.cy = editor.rows - 1;
+    editor.offset = editor.offset + editor.rows;
     break;
   }
 }
@@ -179,15 +191,17 @@ void processKey() {
 void editorDrawRows(struct abuf *ab) {
   int y;
   int len;
+  int curr = 0;
   char *stringBuf = malloc(editor.cols);
   for (y = 0; y < editor.rows; y++) {
     len = 0;
     abAppend(ab, "~ ", 3);
-    if (y < editor.usedrows) {
-      int len = strlen(editor.erow[y].chars);
-
-      abAppend(ab, editor.erow[y].chars, len);
+    curr = y + editor.offset;
+    if (curr < editor.usedrows) {
+      int len = strlen(editor.erow[curr].chars);
+      abAppend(ab, editor.erow[curr].chars, len);
     }
+
     abAppend(ab, "\x1b[K", 4);
     if (y < editor.rows - 1) {
       abAppend(ab, "\r\n", 2);
@@ -257,6 +271,7 @@ void initEditor() {
   editor.cy = 0;
   editor.usedrows = 0;
   editor.currRow = 0;
+  editor.offset = 0;
   editor.erow = NULL;
   WindowSizeget();
 }
