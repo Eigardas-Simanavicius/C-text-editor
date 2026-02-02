@@ -148,7 +148,7 @@ void processKey() {
 
   case ARROW_UP:
     if (editor.cy != 0) {
-      if (editor.cy == (editor.rows / 6)) {
+      if (editor.cy == (editor.rows / 6) && editor.currRow >= editor.rows / 6) {
         editor.offset--;
       } else {
         editor.cy--;
@@ -177,11 +177,18 @@ void processKey() {
     break;
   case PAGE_UP:
     if (editor.currRow > editor.rows) {
+      printf("supa penis");
       editor.offset = editor.offset - editor.rows;
+      editor.currRow = editor.currRow - editor.rows;
     }
     break;
   case PAGE_DOWN:
+    if (editor.cy <= editor.rows / 6) {
+      editor.cy = editor.rows / 6;
+      editor.currRow = editor.currRow + editor.rows / 6;
+    }
     editor.offset = editor.offset + editor.rows;
+    editor.currRow = editor.currRow + editor.rows;
     break;
   }
 }
