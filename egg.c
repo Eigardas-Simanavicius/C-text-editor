@@ -148,7 +148,7 @@ void processKey() {
 
   case ARROW_UP:
     if (editor.cy != 0) {
-      if (editor.cy == (editor.rows / 6) && editor.currRow >= editor.rows / 6) {
+      if (editor.cy == (editor.rows / 6) && editor.offset != 0) {
         editor.offset--;
       } else {
         editor.cy--;
@@ -190,6 +190,12 @@ void processKey() {
     editor.offset = editor.offset + editor.rows;
     editor.currRow = editor.currRow + editor.rows;
     break;
+  }
+}
+
+void insertChar(erow *row, int at, int c) {
+  if (at < 0 && at > row->size) {
+    row->chars = realloc(row->chars, row->chars + 2);
   }
 }
 
