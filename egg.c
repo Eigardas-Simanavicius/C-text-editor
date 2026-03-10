@@ -177,7 +177,6 @@ void processKey() {
     break;
   case PAGE_UP:
     if (editor.currRow > editor.rows) {
-      printf("supa penis");
       editor.offset = editor.offset - editor.rows;
       editor.currRow = editor.currRow - editor.rows;
     }
@@ -190,12 +189,17 @@ void processKey() {
     editor.offset = editor.offset + editor.rows;
     editor.currRow = editor.currRow + editor.rows;
     break;
+  default:
+    insertChar(&editor.erow[editor.currRow], editor.cy, c);
   }
 }
 
 void insertChar(erow *row, int at, int c) {
   if (at < 0 && at > row->size) {
-    row->chars = realloc(row->chars, row->chars + 2);
+    row->chars = realloc(row->chars, sizeof(row->chars) + sizeof(c));
+    memmove(&row->chars[at + 1], &row[at], row->size - at + 2);
+    row->size++;
+    row->chars[at] = c;
   }
 }
 
@@ -248,6 +252,7 @@ void editorAppendRow(char *s, size_t len) {
   editor.erow[curr].chars[len] = '\0';
   editor.usedrows++;
 }
+
 // file io//
 void editorOpen(char *filename) {
   FILE *fp = fopen(filename, "r");
