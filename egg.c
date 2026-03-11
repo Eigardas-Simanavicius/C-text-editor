@@ -136,8 +136,21 @@ int getWindowSize(int *rows, int *cols) {
 }
 
 //*** input ***/*/
+
+void insertChar(erow *row, int at, int c) {
+  printf("sigma");
+  if (at > 0 || at < row->size) {
+    // at = row->size;
+  }
+
+  row->chars = realloc(row->chars, row->size + 2);
+  printf("Here size :%lu %d after the alloc   ", sizeof(row->chars), at);
+  memmove(&row->chars[at + 1], &row->chars[at], row->size - at + 1);
+  editor.cx++;
+  row->size++;
+  row->chars[at] = c;
+}
 void processKey() {
-  // char *lines = editor.erow->chars;
   int c = readKey();
   switch (c) {
   case CTRL_KEY('q'):
@@ -190,21 +203,14 @@ void processKey() {
     editor.currRow = editor.currRow + editor.rows;
     break;
   default:
-    insertChar(&editor.erow[editor.currRow], editor.cy, c);
-  }
-}
+    if (c > 0) {
 
-void insertChar(erow *row, int at, int c) {
-  if (at < 0 && at > row->size) {
-    row->chars = realloc(row->chars, sizeof(row->chars) + sizeof(c));
-    memmove(&row->chars[at + 1], &row[at], row->size - at + 2);
-    row->size++;
-    row->chars[at] = c;
+      insertChar(&editor.erow[editor.cy], editor.cx, c);
+    }
   }
 }
 
 //** output **//
-//
 void editorDrawRows(struct abuf *ab) {
   int y;
   int len;
@@ -242,9 +248,9 @@ void clearScreen() {
   write(STDOUT_FILENO, ab.curr, ab.len);
   abFree(&ab);
 }
+
 void editorAppendRow(char *s, size_t len) {
   editor.erow = realloc(editor.erow, sizeof(erow) * (editor.usedrows + 1));
-
   int curr = editor.usedrows;
   editor.erow[curr].size = len;
   editor.erow[curr].chars = malloc(len + 1);
@@ -301,6 +307,8 @@ int main(int argc, char *argv[]) {
   if (argc >= 2) {
 
     editorOpen(argv[1]);
+  } else {
+    editorAppendRow("a", 2);
   }
 
   while (1) {

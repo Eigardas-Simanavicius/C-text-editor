@@ -1,6 +1,6 @@
 #ifndef APPENDBUFFER_H_
 #define APPENDBUFFER_H_
-
+#include <stdio.h>
 #define ABUF_INIT {NULL, 0}
 struct abuf {
   char *curr;
