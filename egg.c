@@ -1,3 +1,4 @@
+#include <asm-generic/errno.h>
 #include <stddef.h>
 #define _DEFAULT_SOURCE
 #define _BSD_SOURCE
@@ -139,12 +140,11 @@ int getWindowSize(int *rows, int *cols) {
 
 void insertChar(erow *row, int at, int c) {
   printf("sigma");
-  if (at > 0 || at < row->size) {
-    // at = row->size;
+  if (at < 0 || at > row->size) {
+    at = row->size;
+    editor.cx++;
   }
-
   row->chars = realloc(row->chars, row->size + 2);
-  printf("Here size :%lu %d after the alloc   ", sizeof(row->chars), at);
   memmove(&row->chars[at + 1], &row->chars[at], row->size - at + 1);
   editor.cx++;
   row->size++;
@@ -177,6 +177,11 @@ void processKey() {
         editor.cy++;
       }
       editor.currRow++;
+      if (editor.erow[editor.currRow].size != 0) {
+        editor.cx = 0;
+      } else {
+        editor.cx = editor.erow[editor.currRow].size;
+      }
     }
     break;
   case ARROW_LEFT:
@@ -186,6 +191,7 @@ void processKey() {
   case ARROW_RIGHT:
     if (editor.cx != editor.cols - 1) {
       editor.cx++;
+      insertChar(&editor.erow[editor.currRow], editor.cx, 32);
     }
     break;
   case PAGE_UP:
@@ -205,8 +211,13 @@ void processKey() {
   default:
     if (c > 0) {
 
-      insertChar(&editor.erow[editor.cy], editor.cx, c);
+      insertChar(&editor.erow[editor.currRow], editor.cx, c);
     }
+  }
+
+  printf(" Currrows: %d usedROws: %d |", editor.currRow, editor.usedrows);
+  while (editor.currRow + 1 > editor.usedrows) {
+    editorAppendRow("", 1);
   }
 }
 
@@ -308,7 +319,7 @@ int main(int argc, char *argv[]) {
 
     editorOpen(argv[1]);
   } else {
-    editorAppendRow("a", 2);
+    editorAppendRow("", 1);
   }
 
   while (1) {
