@@ -18,6 +18,7 @@
 
 // defines //
 #define CTRL_KEY(k) ((k) & 0x1f)
+#define ENTER_KEY 13
 
 enum moveKeys {
   ARROW_LEFT = 1000,
@@ -66,7 +67,7 @@ void enableRawMode() {
   // creates a structure to read the current attributes of the terminal
   struct termios terminalAttributes = editor.orgAttributes;
   // turn off ECHO
-  terminalAttributes.c_iflag &= ~(IXON);
+  terminalAttributes.c_iflag &= ~(ICRNL | IXON);
   terminalAttributes.c_oflag &= ~(OPOST);
   terminalAttributes.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN);
   // vmin the amount of bytes we wait before return read, and vtime how often
@@ -139,10 +140,9 @@ int getWindowSize(int *rows, int *cols) {
 //*** input ***/*/
 
 void insertChar(erow *row, int at, int c) {
-  printf("sigma");
   if (at < 0 || at > row->size) {
-    at = row->size;
-    editor.cx++;
+    at = row->size - 1;
+    editor.cx = at;
   }
   row->chars = realloc(row->chars, row->size + 2);
   memmove(&row->chars[at + 1], &row->chars[at], row->size - at + 1);
@@ -150,8 +150,31 @@ void insertChar(erow *row, int at, int c) {
   row->size++;
   row->chars[at] = c;
 }
+
+void insertNewRow(int at) {
+  editor.erow = realloc(editor.erow, sizeof(erow) * (editor.usedrows + 1));
+  printf("first Adress :%p,value: %c, second Adress: %p value: %c, third value "
+         "%c ",
+         &editor.erow[at], editor.erow[at].chars[0], &editor.erow[at + 1],
+         editor.erow[at + 1].chars[0], editor.erow[at + 2].chars[0]);
+  memmove(&editor.erow[at + 1], &editor.erow[at],
+          sizeof(erow) * (editor.usedrows - at));
+  editor.erow[at].size = 1;
+  editor.erow[at].chars = malloc(2);
+  editor.erow[at].chars[1] = '\0';
+  printf("first Adress :%p,value: %c, second Adress: %p value: %c, third value "
+         "%c ",
+         &editor.erow[at], editor.erow[at].chars[0], &editor.erow[at + 1],
+         editor.erow[at + 1].chars[0], editor.erow[at + 2].chars[0]);
+
+  editor.usedrows++;
+  editor.cx = 0;
+  // editor.currRow++;
+  // editor.offset++;
+}
 void processKey() {
   int c = readKey();
+
   switch (c) {
   case CTRL_KEY('q'):
     write(STDOUT_FILENO, "\x1b[2J", 4);
@@ -191,7 +214,9 @@ void processKey() {
   case ARROW_RIGHT:
     if (editor.cx != editor.cols - 1) {
       editor.cx++;
-      insertChar(&editor.erow[editor.currRow], editor.cx, 32);
+    }
+    if (editor.erow[editor.currRow].size < editor.cx) {
+      // insertChar(&editor.erow[editor.currRow], editor.cx, 104);
     }
     break;
   case PAGE_UP:
@@ -208,14 +233,17 @@ void processKey() {
     editor.offset = editor.offset + editor.rows;
     editor.currRow = editor.currRow + editor.rows;
     break;
+  case ENTER_KEY:
+    printf("%d", c);
+    // insertNewRow(editor.currRow);
+    //  editor.currRow++;
   default:
     if (c > 0) {
-
       insertChar(&editor.erow[editor.currRow], editor.cx, c);
     }
   }
 
-  printf(" Currrows: %d usedROws: %d |", editor.currRow, editor.usedrows);
+  // printf(" Currrows: %d usedROws: %d |", editor.currRow, editor.usedrows);
   while (editor.currRow + 1 > editor.usedrows) {
     editorAppendRow("", 1);
   }
@@ -226,10 +254,12 @@ void editorDrawRows(struct abuf *ab) {
   int y;
   int len;
   int curr = 0;
+  char buffer[100];
   char *stringBuf = malloc(editor.cols);
   for (y = 0; y < editor.rows; y++) {
     len = 0;
     abAppend(ab, "~ ", 3);
+
     curr = y + editor.offset;
     if (curr < editor.usedrows) {
       int len = strlen(editor.erow[curr].chars);

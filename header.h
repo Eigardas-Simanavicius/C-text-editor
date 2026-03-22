@@ -3,4 +3,5 @@
 #include <stdio.h>
 void clearScreen();
 void editorAppendRow(char *s, size_t len);
+void insertNewRow(int at);
 #endif
