@@ -153,24 +153,16 @@ void insertChar(erow *row, int at, int c) {
 
 void insertNewRow(int at) {
   editor.erow = realloc(editor.erow, sizeof(erow) * (editor.usedrows + 1));
-  printf("first Adress :%p,value: %c, second Adress: %p value: %c, third value "
-         "%c ",
-         &editor.erow[at], editor.erow[at].chars[0], &editor.erow[at + 1],
-         editor.erow[at + 1].chars[0], editor.erow[at + 2].chars[0]);
+
   memmove(&editor.erow[at + 1], &editor.erow[at],
           sizeof(erow) * (editor.usedrows - at));
   editor.erow[at].size = 1;
   editor.erow[at].chars = malloc(2);
   editor.erow[at].chars[1] = '\0';
-  printf("first Adress :%p,value: %c, second Adress: %p value: %c, third value "
-         "%c ",
-         &editor.erow[at], editor.erow[at].chars[0], &editor.erow[at + 1],
-         editor.erow[at + 1].chars[0], editor.erow[at + 2].chars[0]);
-
   editor.usedrows++;
   editor.cx = 0;
-  // editor.currRow++;
-  // editor.offset++;
+  editor.currRow++;
+  editor.offset++;
 }
 void processKey() {
   int c = readKey();
@@ -236,6 +228,9 @@ void processKey() {
   case ENTER_KEY:
     printf("%d", c);
     // insertNewRow(editor.currRow);
+    if (c == '\n' || c == '\r') {
+      printf("[Enter ignored]");
+    }
     //  editor.currRow++;
   default:
     if (c > 0) {
@@ -258,6 +253,8 @@ void editorDrawRows(struct abuf *ab) {
   char *stringBuf = malloc(editor.cols);
   for (y = 0; y < editor.rows; y++) {
     len = 0;
+    char buffer[4];
+    snprintf(buffer, 4, "%d~ ", y);
     abAppend(ab, "~ ", 3);
 
     curr = y + editor.offset;
