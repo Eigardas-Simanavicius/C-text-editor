@@ -167,7 +167,9 @@ void insertNewRow(int at) {
 void processKey() {
   int c = readKey();
 
+  printf("%d", c);
   switch (c) {
+
   case CTRL_KEY('q'):
     write(STDOUT_FILENO, "\x1b[2J", 4);
     write(STDOUT_FILENO, "\x1b[H", 3);
@@ -226,14 +228,14 @@ void processKey() {
     editor.currRow = editor.currRow + editor.rows;
     break;
   case ENTER_KEY:
-    printf("%d", c);
-    // insertNewRow(editor.currRow);
+
+    insertNewRow(editor.currRow);
     if (c == '\n' || c == '\r') {
       printf("[Enter ignored]");
     }
     //  editor.currRow++;
   default:
-    if (c > 0) {
+    if (c > 0 && c != 13) {
       insertChar(&editor.erow[editor.currRow], editor.cx, c);
     }
   }
