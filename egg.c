@@ -153,21 +153,31 @@ void insertChar(erow *row, int at, int c) {
 
 void insertNewRow(int at) {
   editor.erow = realloc(editor.erow, sizeof(erow) * (editor.usedrows + 1));
-
   memmove(&editor.erow[at + 1], &editor.erow[at],
           sizeof(erow) * (editor.usedrows - at));
-  editor.erow[at].size = 1;
-  editor.erow[at].chars = malloc(2);
-  editor.erow[at].chars[1] = '\0';
+  editor.erow[at + 1].size = 0;
+  editor.erow[at + 1].chars = malloc(1);
+  editor.erow[at + 1].chars[0] = '\0';
   editor.usedrows++;
   editor.cx = 0;
-  editor.currRow++;
-  editor.offset++;
+
+  if (editor.cy != editor.rows - 1) {
+    if (editor.cy == ((editor.rows / 6) * 5)) {
+      editor.offset++;
+    } else {
+      editor.cy++;
+    }
+    editor.currRow++;
+    if (editor.erow[editor.currRow].size != 0) {
+      editor.cx = 0;
+    } else {
+      editor.cx = editor.erow[editor.currRow].size;
+    }
+  }
 }
 void processKey() {
   int c = readKey();
 
-  printf("%d", c);
   switch (c) {
 
   case CTRL_KEY('q'):
@@ -228,11 +238,7 @@ void processKey() {
     editor.currRow = editor.currRow + editor.rows;
     break;
   case ENTER_KEY:
-
     insertNewRow(editor.currRow);
-    if (c == '\n' || c == '\r') {
-      printf("[Enter ignored]");
-    }
     //  editor.currRow++;
   default:
     if (c > 0 && c != 13) {
@@ -256,7 +262,7 @@ void editorDrawRows(struct abuf *ab) {
   for (y = 0; y < editor.rows; y++) {
     len = 0;
     char buffer[4];
-    snprintf(buffer, 4, "%d~ ", y);
+    // snprintf(buffer, 4, "%d~ ", y + editor.offset);
     abAppend(ab, "~ ", 3);
 
     curr = y + editor.offset;
