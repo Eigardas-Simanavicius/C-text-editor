@@ -19,6 +19,7 @@
 // defines //
 #define CTRL_KEY(k) ((k) & 0x1f)
 #define ENTER_KEY 13
+#define BACK_SPACE 127
 
 enum moveKeys {
   ARROW_LEFT = 1000,
@@ -144,11 +145,33 @@ void insertChar(erow *row, int at, int c) {
     at = row->size - 1;
     editor.cx = at;
   }
-  row->chars = realloc(row->chars, row->size + 2);
-  memmove(&row->chars[at + 1], &row->chars[at], row->size - at + 1);
-  editor.cx++;
-  row->size++;
-  row->chars[at] = c;
+  if (row->chars[0] == ' ') {
+    row->chars[0] = c;
+  } else {
+    row->chars = realloc(row->chars, row->size + 2);
+    memmove(&row->chars[at + 1], &row->chars[at], row->size - at + 1);
+    editor.cx++;
+    row->size++;
+    row->chars[at] = c;
+  }
+}
+
+void deleteChar(erow *row, int at) {
+  if (at < 0 || at > row->size) {
+    at = row->size - 1;
+    editor.cx = at;
+  }
+  if (at > 0) {
+    row->chars = realloc(row->chars, row->size - 2);
+    memmove(&row->chars[at], &row->chars[at + 1], row->size - at + 1);
+    row->size--;
+
+  } else {
+    row->chars[0] = ' ';
+  }
+  if (editor.cx > 1) {
+    editor.cx--;
+  }
 }
 
 void insertNewRow(int at) {
@@ -239,11 +262,16 @@ void processKey() {
     break;
   case ENTER_KEY:
     insertNewRow(editor.currRow);
+    break;
     //  editor.currRow++;
+  case BACK_SPACE:
+    deleteChar(&editor.erow[editor.currRow], editor.cx - 1);
+    break;
   default:
-    if (c > 0 && c != 13) {
+    if (c > 0 && c != 13 && c != 8) {
       insertChar(&editor.erow[editor.currRow], editor.cx, c);
     }
+    break;
   }
 
   // printf(" Currrows: %d usedROws: %d |", editor.currRow, editor.usedrows);
