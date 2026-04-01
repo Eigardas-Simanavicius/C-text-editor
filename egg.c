@@ -178,7 +178,7 @@ void insertNewRow(int at) {
   editor.erow = realloc(editor.erow, sizeof(erow) * (editor.usedrows + 1));
   memmove(&editor.erow[at + 1], &editor.erow[at],
           sizeof(erow) * (editor.usedrows - at));
-  editor.erow[at + 1].size = 0;
+  editor.erow[at + 1].size = 1;
   editor.erow[at + 1].chars = malloc(1);
   editor.erow[at + 1].chars[0] = '\0';
   editor.usedrows++;
