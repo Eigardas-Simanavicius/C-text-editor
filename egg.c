@@ -44,6 +44,10 @@ struct editorConfig {
   int currRow;
   int usedrows;
   int offset;
+  int displayon;
+  int changed;
+  char *filename;
+  char *msg;
   erow *erow;
   struct termios orgAttributes;
 };
@@ -147,7 +151,8 @@ void insertChar(erow *row, int at, int c) {
     at = row->size - 1;
     editor.cx = at;
   }
-  if (row->chars[0] == ' ') {
+
+  if (row->chars[0] == ' ' && c != ' ' && at == 0) {
     row->chars[0] = c;
   } else {
     row->chars = realloc(row->chars, row->size + 2);
@@ -202,14 +207,32 @@ void insertNewRow(int at) {
 }
 void processKey() {
   int c = readKey();
+  if (c != CTRL_KEY('q') && c != 0) {
+    editor.changed = 1;
+  }
   switch (c) {
-
   case CTRL_KEY('q'):
-    write(STDOUT_FILENO, "\x1b[2J", 4);
-    write(STDOUT_FILENO, "\x1b[H", 3);
-    exit(0);
+    if (editor.changed == 1) {
+      if (editor.displayon != 1) {
+        displayConsole('q');
+      } else {
+        write(STDOUT_FILENO, "\x1b[2J", 4);
+        write(STDOUT_FILENO, "\x1b[H", 3);
+        exit(0);
+      }
+    } else {
+      write(STDOUT_FILENO, "\x1b[2J", 4);
+      write(STDOUT_FILENO, "\x1b[H", 3);
+      exit(0);
+    }
     break;
-
+  case CTRL_KEY('c'):
+    displayConsole('c');
+    break;
+  case CTRL_KEY('s'):
+    saveToFile(editor.filename);
+    displayConsole('s');
+    break;
   case ARROW_UP:
     if (editor.cy != 0) {
       if (editor.cy == (editor.rows / 6) && editor.offset != 0) {
@@ -264,15 +287,14 @@ void processKey() {
   case ENTER_KEY:
     insertNewRow(editor.currRow);
     break;
-    //  editor.currRow++;
+  //  editor.currRow++;
   case BACK_SPACE:
-    deleteChar(&editor.erow[editor.currRow], editor.cx - 1);
+    if (editor.cx > 0) {
+      deleteChar(&editor.erow[editor.currRow], editor.cx - 1);
+    }
     break;
   case TAB:
-    if (editor.cx == 0) {
-      editor.cx++;
-    }
-    insertChar(&editor.erow[editor.currRow], editor.cx, '  ');
+    insertChar(&editor.erow[editor.currRow], editor.cx, ' ');
     insertChar(&editor.erow[editor.currRow], editor.cx, ' ');
     break;
   default:
@@ -282,7 +304,6 @@ void processKey() {
     break;
   }
 
-  // printf(" Currrows: %d usedROws: %d |", editor.currRow, editor.usedrows);
   while (editor.currRow + 1 > editor.usedrows) {
     editorAppendRow("", 1);
   }
@@ -291,16 +312,30 @@ void processKey() {
 //** output **//
 void editorDrawRows(struct abuf *ab) {
   int y;
+  int i;
   int len;
   int curr = 0;
   char buffer[100];
   char *stringBuf = malloc(editor.cols);
   for (y = 0; y < editor.rows; y++) {
     len = 0;
-    char buffer[4];
-    // snprintf(buffer, 4, "%d~ ", y + editor.offset);
-    abAppend(ab, "~ ", 3);
+    char buffer[editor.cols];
+    if (editor.displayon == 1) {
+      if (y == editor.rows - 2) {
+        for (i = 0; i < editor.cols; i++) {
+          buffer[i] = '-';
+        }
+        abAppend(ab, buffer, editor.cols);
+      } else if (y == editor.rows - 1) {
+        abAppend(ab, editor.msg, strlen(editor.msg));
+      }
+    }
+    if (editor.displayon == 1 &&
+        (y == editor.rows - 2 || y == editor.rows - 1)) {
 
+    } else {
+      abAppend(ab, "~ ", 3);
+    }
     curr = y + editor.offset;
     if (curr < editor.usedrows) {
       int len = strlen(editor.erow[curr].chars);
@@ -342,6 +377,14 @@ void editorAppendRow(char *s, size_t len) {
 }
 
 // file io//
+void saveToFile(char *filename) {
+  FILE *fp = fopen(filename, "w");
+  int i;
+  for (i = 0; i < editor.usedrows; i++) {
+    fputs(editor.erow[i].chars, fp);
+  }
+  fclose(fp);
+}
 void editorOpen(char *filename) {
   FILE *fp = fopen(filename, "r");
   if (!fp)
@@ -378,8 +421,28 @@ void initEditor() {
   editor.usedrows = 0;
   editor.currRow = 0;
   editor.offset = 0;
+  editor.displayon = -1;
   editor.erow = NULL;
+  editor.changed = 0;
   WindowSizeget();
+}
+
+void displayConsole(char cntrl) {
+  editor.displayon = 1;
+  switch (cntrl) {
+  case 'q':
+    editor.msg =
+        "You have unchanged Changes, use cntrl+s to save before using cntrl q, "
+        "or just use cntrl q to quit without saving (cntl C to close message) ";
+    break;
+  case 'c':
+    editor.displayon = editor.displayon * -1;
+    break;
+  case 's':
+    editor.msg = "Data save to file Cntrl C to close this console";
+    editor.changed = 0;
+    break;
+  }
 }
 
 int main(int argc, char *argv[]) {
@@ -387,9 +450,10 @@ int main(int argc, char *argv[]) {
   initEditor();
 
   if (argc >= 2) {
-
+    editor.filename = argv[1];
     editorOpen(argv[1]);
   } else {
+    editor.filename = NULL;
     editorAppendRow("", 1);
   }
 
