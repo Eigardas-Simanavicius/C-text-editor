@@ -154,6 +154,7 @@ void insertChar(erow *row, int at, int c) {
 
   if (row->chars[0] == ' ' && c != ' ' && at == 0) {
     row->chars[0] = c;
+    editor.cx++;
   } else {
     row->chars = realloc(row->chars, row->size + 2);
     memmove(&row->chars[at + 1], &row->chars[at], row->size - at + 1);
@@ -165,18 +166,23 @@ void insertChar(erow *row, int at, int c) {
 
 void deleteChar(erow *row, int at) {
   if (at < 0 || at > row->size) {
-    at = row->size - 1;
+    if (row->size > 0) {
+      at = row->size - 1;
+    }
     editor.cx = at;
   }
-  if (at > 0) {
-    row->chars = realloc(row->chars, row->size - 2);
-    memmove(&row->chars[at], &row->chars[at + 1], row->size - at + 1);
-    row->size--;
+  if (at == 0) {
+    row->chars[at] = ' ';
+  } else if (at > 0) {
 
-  } else {
-    row->chars[0] = ' ';
+    if (row->size > 0) {
+      row->chars = realloc(row->chars, row->size);
+      memmove(&row->chars[at], &row->chars[at + 1], row->size - at + 1);
+      row->size--;
+    }
   }
-  if (editor.cx > 1) {
+
+  if (editor.cx > 0) {
     editor.cx--;
   }
 }
@@ -382,6 +388,7 @@ void saveToFile(char *filename) {
   int i;
   for (i = 0; i < editor.usedrows; i++) {
     fputs(editor.erow[i].chars, fp);
+    fputs("\n", fp);
   }
   fclose(fp);
 }
@@ -431,9 +438,10 @@ void displayConsole(char cntrl) {
   editor.displayon = 1;
   switch (cntrl) {
   case 'q':
-    editor.msg =
-        "You have unchanged Changes, use cntrl+s to save before using cntrl q, "
-        "or just use cntrl q to quit without saving (cntl C to close message) ";
+    editor.msg = "You have unchanged Changes, use cntrl+s to save before "
+                 "using cntrl q, "
+                 "or just use cntrl q to quit without saving (cntl C to "
+                 "close message) ";
     break;
   case 'c':
     editor.displayon = editor.displayon * -1;
