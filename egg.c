@@ -20,6 +20,7 @@
 #define CTRL_KEY(k) ((k) & 0x1f)
 #define ENTER_KEY 13
 #define BACK_SPACE 127
+#define TAB 9
 
 enum moveKeys {
   ARROW_LEFT = 1000,
@@ -80,6 +81,7 @@ void enableRawMode() {
 
 int readKey() {
   char c;
+
   // EAGAIN: "Resoursce temporerily unavailabe."
 
   if (read(STDIN_FILENO, &c, 1) == -1 && errno != EAGAIN) {
@@ -200,7 +202,6 @@ void insertNewRow(int at) {
 }
 void processKey() {
   int c = readKey();
-
   switch (c) {
 
   case CTRL_KEY('q'):
@@ -266,6 +267,13 @@ void processKey() {
     //  editor.currRow++;
   case BACK_SPACE:
     deleteChar(&editor.erow[editor.currRow], editor.cx - 1);
+    break;
+  case TAB:
+    if (editor.cx == 0) {
+      editor.cx++;
+    }
+    insertChar(&editor.erow[editor.currRow], editor.cx, '  ');
+    insertChar(&editor.erow[editor.currRow], editor.cx, ' ');
     break;
   default:
     if (c > 0 && c != 13 && c != 8) {
